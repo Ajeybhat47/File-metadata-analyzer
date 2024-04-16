@@ -43,9 +43,24 @@ struct PNGHeader {
 };
 
 //Structure representing the header of a BMP file.
+// Structure representing the header of a BMP file.
 struct BMPHeader {
     char     signature[2];
     uint32_t fileSize;
+    uint16_t reserved1;
+    uint16_t reserved2;
+    uint32_t dataOffset;
+    uint32_t headerSize;
+    int32_t  width;  // W
+    int32_t  height; // H
+    uint16_t planes;
+    uint16_t bitCount;
+    uint32_t compression;
+    uint32_t imageSize;
+    int32_t  xPixelsPerMeter;
+    int32_t  yPixelsPerMeter;
+    uint32_t colorsUsed;
+    uint32_t colorsImportant;
 };
 
 //Structure representing the header of a ZIP file.

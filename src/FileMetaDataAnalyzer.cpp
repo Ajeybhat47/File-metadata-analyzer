@@ -1,12 +1,52 @@
 #include "FileMetaDataAnalyzer.h"
 #include <poppler/cpp/poppler-document.h>
 #include <poppler/cpp/poppler-page.h>
+#include <type_traits>
 #include <fstream>
 #include <sstream>
 #include <iostream>
 #include <cstring>
 #include <zip.h>
 #include <type_traits>
+#include <sys/stat.h>
+#include <string>
+#include <ctime>
+
+
+
+template<typename T>
+CustomMap<std::string, std::string> extractBasicMetadata(const std::filesystem::path& filePath) {
+    CustomMap<std::string, std::string> basicMetadata;
+
+    // File name
+    std::string fileName = filePath.filename().string();
+    basicMetadata["FileName"] = fileName;
+
+    // File size
+    struct stat fileStat;
+    if (stat(filePath.c_str(), &fileStat) == 0) {
+        std::string fileSize = std::to_string(fileStat.st_size) + " bytes";
+        basicMetadata["FileSize"] = fileSize;
+    }
+
+    // File type/format
+    std::string fileType = filePath.extension().string();
+    basicMetadata["FileType"] = fileType;
+
+    // Creation time
+    std::string creationTime = std::ctime(&fileStat.st_ctime);
+    basicMetadata["CreationTime"] = creationTime;
+
+    // Last modified time
+    std::string lastModified = std::ctime(&fileStat.st_mtime);
+    basicMetadata["LastModified"] = lastModified;
+
+    // Last access time
+    std::string lastAccess = std::ctime(&fileStat.st_atime);
+    basicMetadata["LastAccess"] = lastAccess;
+
+    return basicMetadata;
+}
 
 /**
  * @brief Helper function to analyze the metadata of a file based on its type.
@@ -19,7 +59,9 @@
  */
 template <typename T>
 CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem::path& filePath) {
-    CustomMap<std::string, std::string> metadata;
+    CustomMap<std::string, std::string> metadata = extractBasicMetadata<T>(filePath);
+
+
 
     if constexpr (std::is_same_v<T, poppler::document>) {
         // PDF metadata extraction logic
@@ -104,7 +146,7 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["Width"] = std::to_string(header.width);
         metadata["Height"] = std::to_string(header.height);
     } else if constexpr (std::is_same_v<T, BMPHeader>) {
-        // BMP metadata extraction logic
+    // BMP metadata extraction logic
         std::ifstream file(filePath, std::ios::binary);
         if (!file.is_open()) {
             return metadata;
@@ -117,6 +159,8 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["FileType"] = "BMP";
         metadata["Signature"] = std::string(header.signature, 2);
         metadata["FileSize"] = std::to_string(header.fileSize);
+        metadata["Width"] = std::to_string(header.width);
+        metadata["Height"] = std::to_string(header.height);
     } else if constexpr (std::is_same_v<T, ZIPHeader>) {
         // ZIP metadata extraction logic
         int error;
@@ -185,6 +229,7 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["DataTag"] = std::string(header.dataTag, 4);
         metadata["DataSize"] = std::to_string(header.dataSize);
     }
+
 
     return metadata;
 }
