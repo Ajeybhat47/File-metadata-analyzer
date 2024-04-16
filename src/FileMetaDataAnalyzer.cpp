@@ -308,17 +308,6 @@ CustomMap<std::string, std::string> analyzeSpecializedMetadata(const std::filesy
 }
 
 
-
-template <typename T>
-CustomMap<std::string, std::string> analyzeSpecializedMetadata(const std::filesystem::path& filePath) {
-    
-    CustomMap<std::string, std::string> metadata;
-    return metadata;
-}
-
-
-
-
 template <typename... T>
     requires (sizeof...(T) > 0)
 FileType determineFileType(const std::filesystem::path& filePath) {
