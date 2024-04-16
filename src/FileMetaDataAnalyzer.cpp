@@ -320,6 +320,7 @@ CustomMap<std::string, std::string> analyzeSpecializedMetadata(const std::filesy
 
 
 template <typename... T>
+    requires (sizeof...(T) > 0)
 FileType determineFileType(const std::filesystem::path& filePath) {
     std::ifstream file(filePath, std::ios::binary);
     if (!file.is_open()) {
