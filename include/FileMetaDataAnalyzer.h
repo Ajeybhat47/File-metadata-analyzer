@@ -83,6 +83,7 @@ inline constexpr uint8_t PDFSignature[] = {'%', 'P', 'D', 'F'};
 inline constexpr uint8_t ZIPSignature[] = {0x50, 0x4B, 0x03, 0x04};
 inline constexpr char WAVSignature[] = {'R', 'I', 'F', 'F'};
 
+
 template <typename... T>
 FileType determineFileType(const std::filesystem::path& filePath);
 
@@ -96,9 +97,12 @@ public:
         return analyzeMetadataHelper<T...>(filePath);
     }
 
+
+
 private:
     template <typename U>
     friend CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem::path& filePath);
 };
+
 
 #endif
