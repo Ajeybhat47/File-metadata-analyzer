@@ -2,11 +2,11 @@
 #define FILE_METADATA_ANALYZER_H
 
 #include <filesystem>
-//#include <map>
 #include <poppler/cpp/poppler-document.h>
 #include <cstdint>
 #include <cstring>
 #include <type_traits>
+#include <concepts>
 #include "CustomMap.h"
 
 enum class FileType {
@@ -83,13 +83,23 @@ inline constexpr uint8_t PDFSignature[] = {'%', 'P', 'D', 'F'};
 inline constexpr uint8_t ZIPSignature[] = {0x50, 0x4B, 0x03, 0x04};
 inline constexpr char WAVSignature[] = {'R', 'I', 'F', 'F'};
 
+template <typename T>
+concept FileHeader = std::is_same_v<T, poppler::document> ||
+                     std::is_same_v<T, std::ifstream> ||
+                     std::is_same_v<T, JPEGHeader> ||
+                     std::is_same_v<T, PNGHeader> ||
+                     std::is_same_v<T, BMPHeader> ||
+                     std::is_same_v<T, ZIPHeader> ||
+                     std::is_same_v<T, WAVHeader>;
+
 template <typename... T>
+    requires (sizeof...(T) > 0)
 FileType determineFileType(const std::filesystem::path& filePath);
 
 template <typename T>
 CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem::path& filePath);
 
-template <typename... T>
+template <FileHeader... T>
 class FileMetaDataAnalyzer {
 public:
     static CustomMap<std::string, std::string> analyzeMetadata(const std::filesystem::path& filePath) {
