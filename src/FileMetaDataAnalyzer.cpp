@@ -1,4 +1,3 @@
-// FileMetaDataAnalyzer.cpp
 #include "FileMetaDataAnalyzer.h"
 #include <poppler/cpp/poppler-document.h>
 #include <poppler/cpp/poppler-page.h>
@@ -9,12 +8,21 @@
 #include <zip.h>
 #include <type_traits>
 
+/**
+ * @brief Helper function to analyze the metadata of a file based on its type.
+ *
+ * This function uses template specialization to handle the metadata extraction for each supported file type.
+ *
+ * @tparam T The file header type.
+ * @param filePath The path to the file.
+ * @return A `CustomMap` containing the extracted metadata.
+ */
 template <typename T>
 CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem::path& filePath) {
     CustomMap<std::string, std::string> metadata;
 
     if constexpr (std::is_same_v<T, poppler::document>) {
-        // Existing PDF metadata extraction logic
+        // PDF metadata extraction logic
         poppler::document* doc = poppler::document::load_from_file(filePath.string());
         if (!doc || doc->is_locked()) {
             delete doc;
@@ -32,7 +40,7 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["FileType"] = "PDF";
         delete doc;
     } else if constexpr (std::is_same_v<T, std::ifstream>) {
-        // Existing TXT metadata extraction logic
+        // TXT metadata extraction logic
         std::ifstream file(filePath);
         if (!file.is_open()) {
             return metadata;
@@ -60,7 +68,7 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["FileType"] = "TXT";
         file.close();
     } else if constexpr (std::is_same_v<T, JPEGHeader>) {
-        // Existing JPEG metadata extraction logic
+        // JPEG metadata extraction logic
         std::ifstream file(filePath, std::ios::binary);
         if (!file.is_open()) {
             return metadata;
@@ -81,7 +89,7 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["ThumbnailWidth"] = std::to_string(static_cast<int>(header.thumbWidth));
         metadata["ThumbnailHeight"] = std::to_string(static_cast<int>(header.thumbHeight));
     } else if constexpr (std::is_same_v<T, PNGHeader>) {
-        // Existing PNG metadata extraction logic
+        // PNG metadata extraction logic
         std::ifstream file(filePath, std::ios::binary);
         if (!file.is_open()) {
             return metadata;
@@ -96,7 +104,7 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["Width"] = std::to_string(header.width);
         metadata["Height"] = std::to_string(header.height);
     } else if constexpr (std::is_same_v<T, BMPHeader>) {
-        // Existing BMP metadata extraction logic
+        // BMP metadata extraction logic
         std::ifstream file(filePath, std::ios::binary);
         if (!file.is_open()) {
             return metadata;
@@ -110,7 +118,7 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["Signature"] = std::string(header.signature, 2);
         metadata["FileSize"] = std::to_string(header.fileSize);
     } else if constexpr (std::is_same_v<T, ZIPHeader>) {
-        // Existing ZIP metadata extraction logic
+        // ZIP metadata extraction logic
         int error;
         zip_t* zip = zip_open(filePath.string().c_str(), 0, &error);
         if (!zip) {
@@ -152,7 +160,7 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
 
         zip_close(zip);
     } else if constexpr (std::is_same_v<T, WAVHeader>) {
-        // Existing WAV metadata extraction logic
+        //WAV metadata extraction logic
         std::ifstream file(filePath, std::ios::binary);
         if (!file.is_open()) {
             return metadata;
@@ -181,6 +189,15 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
     return metadata;
 }
 
+/**
+ * @brief Determines the file type based on the file signature.
+ *
+ * This function uses a fold expression to check the file signature and return the corresponding `FileType`.
+ *
+ * @tparam T The supported file header types.
+ * @param filePath The path to the file.
+ * @return The determined file type.
+ */
 template <typename... T>
     requires (sizeof...(T) > 0)
 FileType determineFileType(const std::filesystem::path& filePath) {
@@ -208,8 +225,10 @@ FileType determineFileType(const std::filesystem::path& filePath) {
     );
 }
 
+// Explicit template instantiations for the supported file header types
 template FileType determineFileType<poppler::document, std::ifstream, JPEGHeader, PNGHeader, BMPHeader, ZIPHeader, WAVHeader>(const std::filesystem::path& filePath);
 
+// Explicit template instantiations for the FileMetaDataAnalyzer class
 template CustomMap<std::string, std::string> FileMetaDataAnalyzer<poppler::document>::analyzeMetadata(const std::filesystem::path& filePath);
 template CustomMap<std::string, std::string> FileMetaDataAnalyzer<std::ifstream>::analyzeMetadata(const std::filesystem::path& filePath);
 template CustomMap<std::string, std::string> FileMetaDataAnalyzer<JPEGHeader>::analyzeMetadata(const std::filesystem::path& filePath);

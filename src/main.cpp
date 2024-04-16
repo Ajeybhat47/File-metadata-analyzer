@@ -4,6 +4,22 @@
 #include <poppler/cpp/poppler-document.h>
 #include <poppler/cpp/poppler-page.h>
 
+/**
+ * @brief Prints the metadata key-value pairs in a formatted way.
+ *
+ * @tparam KeyType The type of the keys.
+ * @tparam ValueType The type of the values.
+ * @param metadata The metadata to be printed.
+ */
+
+template <typename KeyType, typename ValueType>
+void printMetadata(const CustomMap<KeyType, ValueType>& metadata) {
+    for (const auto& [key, value] : metadata) {
+        std::cout << std::left << std::setw(20) << key << ": " << value << std::endl;
+    }
+    std::cout << std::endl;
+}
+
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " <file_path>" << std::endl;
@@ -56,11 +72,8 @@ int main(int argc, char* argv[]) {
             return 1;
     }
 
-    // Print the extracted metadata
-    for (const auto& [key, value] : metadata) {
-        std::cout << std::left << std::setw(20) << key << ": " << value << std::endl;
-    }
-    std::cout << std::endl;
+    // Print the extracted metadata using a lambda template
+    printMetadata(metadata);
 
     return 0;
 }

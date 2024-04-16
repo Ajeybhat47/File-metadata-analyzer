@@ -9,6 +9,7 @@
 #include <concepts>
 #include "CustomMap.h"
 
+//Enumeration representing the supported file types.
 enum class FileType {
     PDF,
     TXT,
@@ -20,6 +21,8 @@ enum class FileType {
     UNKNOWN
 };
 
+
+//Structure representing the header of a JPEG file.
 struct JPEGHeader {
     uint16_t marker;
     uint16_t length;
@@ -32,19 +35,20 @@ struct JPEGHeader {
     uint8_t  thumbHeight;
 };
 
+//Structure representing the header of a PNG file.
 struct PNGHeader {
     uint8_t  signature[8];
     uint32_t width;
     uint32_t height;
-    // Add other fields as per PNG specification...
 };
 
+//Structure representing the header of a BMP file.
 struct BMPHeader {
     char     signature[2];
     uint32_t fileSize;
-    // Add other fields as per BMP specification...
 };
 
+//Structure representing the header of a ZIP file.
 struct ZIPHeader {
     uint32_t signature;     // Always 0x04034b50
     uint16_t versionMadeBy; // Version made by (high byte version, low byte host system)
@@ -60,6 +64,8 @@ struct ZIPHeader {
     uint16_t extraFieldLength; // Extra field length
 };
 
+
+//Structure representing the header of a WAV file.
 struct WAVHeader {
     char riffTag[4];
     uint32_t riffSize;
@@ -76,6 +82,7 @@ struct WAVHeader {
     uint32_t dataSize;
 };
 
+//File signature constants for different file types.
 inline constexpr uint8_t JPEGSignature[] = {0xFF, 0xD8, 0xFF};
 inline constexpr uint8_t PNGSignature[] = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'};
 inline constexpr uint8_t BMPSignature[] = {'B', 'M'};
@@ -83,6 +90,12 @@ inline constexpr uint8_t PDFSignature[] = {'%', 'P', 'D', 'F'};
 inline constexpr uint8_t ZIPSignature[] = {0x50, 0x4B, 0x03, 0x04};
 inline constexpr char WAVSignature[] = {'R', 'I', 'F', 'F'};
 
+
+/**
+ * @brief Concept to ensure the template parameter T is a valid file header type.
+ *
+ * The concept checks if T is one of the supported file header types: `poppler::document`, `std::ifstream`, `JPEGHeader`, `PNGHeader`, `BMPHeader`, `ZIPHeader`, or `WAVHeader`.
+ */
 template <typename T>
 concept FileHeader = std::is_same_v<T, poppler::document> ||
                      std::is_same_v<T, std::ifstream> ||
@@ -92,16 +105,55 @@ concept FileHeader = std::is_same_v<T, poppler::document> ||
                      std::is_same_v<T, ZIPHeader> ||
                      std::is_same_v<T, WAVHeader>;
 
+
+/**
+ * @brief Determines the file type of the given file path.
+ *
+ * This function uses a fold expression to check the file signature and return the corresponding `FileType`.
+ *
+ * @tparam T The supported file header types.
+ * @param filePath The path to the file.
+ * @return The determined file type.
+ * *
+ * This class demonstrates the use of several C++ features, including:
+ * - Variadic templates: The class template parameters allow for different types of key and value.
+ * - Template specialization: The class can be specialized for different key and value types.
+ * - Lambda expressions: Used in the implementation of various member functions.
+ * - Concepts and constraints: The class template uses the `std::is_same_v` type trait to ensure the key and value types are valid.
+ */
 template <typename... T>
     requires (sizeof...(T) > 0)
 FileType determineFileType(const std::filesystem::path& filePath);
 
+
+/**
+ * @brief Analyzes the metadata of the file at the given path.
+ *
+ * This is a helper function that is called by the `FileMetaDataAnalyzer` class. It extracts the metadata based on the file type.
+ *
+ * @tparam T The file header type.
+ * @param filePath The path to the file.
+ * @return A `CustomMap` containing the extracted metadata.
+ */
 template <typename T>
 CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem::path& filePath);
 
+/**
+ * @brief A class that analyzes the metadata of files.
+ *
+ * This class uses the `analyzeMetadataHelper()` function to extract the metadata for the supported file types.
+ *
+ * @tparam T The supported file header types.
+ */
 template <FileHeader... T>
 class FileMetaDataAnalyzer {
 public:
+    /**
+     * @brief Analyzes the metadata of the file at the given path.
+     *
+     * @param filePath The path to the file.
+     * @return A `CustomMap` containing the extracted metadata.
+     */
     static CustomMap<std::string, std::string> analyzeMetadata(const std::filesystem::path& filePath) {
         return analyzeMetadataHelper<T...>(filePath);
     }
