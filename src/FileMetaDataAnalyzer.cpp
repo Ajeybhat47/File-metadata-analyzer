@@ -8,13 +8,100 @@
 #include <cstring>
 #include <zip.h>
 #include <type_traits>
+#include <sys/stat.h>
+#include <string>
+#include <ctime>
+
+template<typename T>
+concept PDFType = std::is_same_v<T, poppler::document>;
+
+template<typename T>
+concept TXTType = std::is_same_v<T, std::ifstream>;
+
+template<typename T>
+concept JPEGType = std::is_same_v<T, JPEGHeader>;
+
+template<typename T>
+concept PNGType = std::is_same_v<T, PNGHeader>;
+
+template<typename T>
+concept BMPType = std::is_same_v<T, BMPHeader>;
+
+template<typename T>
+concept ZIPType = std::is_same_v<T, ZIPHeader>;
+
+template<typename T>
+concept WAVType = std::is_same_v<T, WAVHeader>;
+
+
+template<typename T>
+CustomMap<std::string, std::string> extractBasicMetadata(const std::filesystem::path& filePath) {
+    CustomMap<std::string, std::string> basicMetadata;
+
+    // File name
+    std::string fileName = filePath.filename().string();
+    basicMetadata["FileName"] = fileName;
+
+    // File size
+    struct stat fileStat;
+    if (stat(filePath.c_str(), &fileStat) == 0) {
+        std::string fileSize = std::to_string(fileStat.st_size) + " bytes";
+        basicMetadata["FileSize"] = fileSize;
+    }
+
+    // File type/format
+    std::string fileType = filePath.extension().string();
+    basicMetadata["FileType"] = fileType;
+
+    // Creation time
+    std::string creationTime = std::ctime(&fileStat.st_ctime);
+    basicMetadata["CreationTime"] = creationTime;
+
+    // Last modified time
+    std::string lastModified = std::ctime(&fileStat.st_mtime);
+    basicMetadata["LastModified"] = lastModified;
+
+    // Last access time
+    std::string lastAccess = std::ctime(&fileStat.st_atime);
+    basicMetadata["LastAccess"] = lastAccess;
+
+    return basicMetadata;
+}
+
+
+// Function to analyze metadata for any file type
+template<typename T>
+CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem::path& filePath) {
+    CustomMap<std::string, std::string> metadata = extractBasicMetadata<T>(filePath);
+
+    // call basic metadata extraction function
+    auto basicMetadata = extractBasicMetadata<T>(filePath);
+
+    // Insert key-value pairs from basic metadata into metadata
+    for (const auto& [key, value] : basicMetadata) {
+        metadata[key] = value;
+    }
+
+    // Call specialized metadata extraction function
+    auto specializedMetadata = analyzeSpecializedMetadata<T>(filePath);
+
+    
+    
+    // Insert key-value pairs from specialized metadata into basic metadata
+    for (const auto& [key, value] : specializedMetadata) {
+        metadata[key] = value;
+    }
+
+    return metadata;
+}
+
 
 template <typename T>
-CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem::path& filePath) {
-    CustomMap<std::string, std::string> metadata;
+CustomMap<std::string, std::string> analyzeSpecializedMetadata(const std::filesystem::path& filePath) requires PDFType<T> {
+    // PDF metadata extraction logic
+            // Existing PDF metadata extraction logic
+        CustomMap<std::string, std::string> metadata;
 
-    if constexpr (std::is_same_v<T, poppler::document>) {
-        // Existing PDF metadata extraction logic
         poppler::document* doc = poppler::document::load_from_file(filePath.string());
         if (!doc || doc->is_locked()) {
             delete doc;
@@ -31,9 +118,15 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["ModificationDate"] = doc->get_modification_date();
         metadata["FileType"] = "PDF";
         delete doc;
-    } else if constexpr (std::is_same_v<T, std::ifstream>) {
-        // Existing TXT metadata extraction logic
-        std::ifstream file(filePath);
+
+        return metadata;
+}
+
+template <typename T>
+CustomMap<std::string, std::string> analyzeSpecializedMetadata(const std::filesystem::path& filePath) requires TXTType<T> {
+    // TXT metadata extraction logic
+    CustomMap<std::string, std::string> metadata;
+            std::ifstream file(filePath);
         if (!file.is_open()) {
             return metadata;
         }
@@ -59,8 +152,15 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["FileSize"] = std::to_string(fileContent.size()) + " bytes";
         metadata["FileType"] = "TXT";
         file.close();
-    } else if constexpr (std::is_same_v<T, JPEGHeader>) {
-        // Existing JPEG metadata extraction logic
+
+        return metadata;
+}
+
+template <typename T>
+CustomMap<std::string, std::string> analyzeSpecializedMetadata(const std::filesystem::path& filePath) requires JPEGType<T> {
+    // JPEG metadata extraction logic
+    // Existing JPEG metadata extraction logic
+    CustomMap<std::string, std::string> metadata;
         std::ifstream file(filePath, std::ios::binary);
         if (!file.is_open()) {
             return metadata;
@@ -80,8 +180,15 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["YDensity"] = std::to_string(header.yDensity);
         metadata["ThumbnailWidth"] = std::to_string(static_cast<int>(header.thumbWidth));
         metadata["ThumbnailHeight"] = std::to_string(static_cast<int>(header.thumbHeight));
-    } else if constexpr (std::is_same_v<T, PNGHeader>) {
-        // Existing PNG metadata extraction logic
+
+        return metadata;
+}
+
+template <typename T>
+CustomMap<std::string, std::string> analyzeSpecializedMetadata(const std::filesystem::path& filePath) requires PNGType<T> {
+    // PNG metadata extraction logic
+     // Existing PNG metadata extraction logic
+     CustomMap<std::string, std::string> metadata;
         std::ifstream file(filePath, std::ios::binary);
         if (!file.is_open()) {
             return metadata;
@@ -95,9 +202,15 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["Signature"] = std::string(reinterpret_cast<char*>(header.signature), 8);
         metadata["Width"] = std::to_string(header.width);
         metadata["Height"] = std::to_string(header.height);
-    } else if constexpr (std::is_same_v<T, BMPHeader>) {
-        // Existing BMP metadata extraction logic
-        std::ifstream file(filePath, std::ios::binary);
+
+        return metadata;
+}
+
+template <typename T>
+CustomMap<std::string, std::string> analyzeSpecializedMetadata(const std::filesystem::path& filePath) requires BMPType<T> {
+    // BMP metadata extraction logic
+    CustomMap<std::string, std::string> metadata;
+    std::ifstream file(filePath, std::ios::binary);
         if (!file.is_open()) {
             return metadata;
         }
@@ -109,9 +222,15 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["FileType"] = "BMP";
         metadata["Signature"] = std::string(header.signature, 2);
         metadata["FileSize"] = std::to_string(header.fileSize);
-    } else if constexpr (std::is_same_v<T, ZIPHeader>) {
-        // Existing ZIP metadata extraction logic
-        int error;
+
+        return metadata;
+}
+
+template <typename T>
+CustomMap<std::string, std::string> analyzeSpecializedMetadata(const std::filesystem::path& filePath) requires ZIPType<T> {
+    // ZIP metadata extraction logic
+    CustomMap<std::string, std::string> metadata;
+    int error;
         zip_t* zip = zip_open(filePath.string().c_str(), 0, &error);
         if (!zip) {
             // Handle the error code in `error`
@@ -151,9 +270,16 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         }
 
         zip_close(zip);
-    } else if constexpr (std::is_same_v<T, WAVHeader>) {
-        // Existing WAV metadata extraction logic
-        std::ifstream file(filePath, std::ios::binary);
+        return metadata;
+}
+
+template <typename T>
+CustomMap<std::string, std::string> analyzeSpecializedMetadata(const std::filesystem::path& filePath) requires WAVType<T> {
+    // WAV metadata extraction logic
+
+    CustomMap<std::string, std::string> metadata;
+
+    std::ifstream file(filePath, std::ios::binary);
         if (!file.is_open()) {
             return metadata;
         }
@@ -176,10 +302,22 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["BitsPerSample"] = std::to_string(header.bitsPerSample);
         metadata["DataTag"] = std::string(header.dataTag, 4);
         metadata["DataSize"] = std::to_string(header.dataSize);
-    }
 
+        return metadata;
+
+}
+
+
+
+template <typename T>
+CustomMap<std::string, std::string> analyzeSpecializedMetadata(const std::filesystem::path& filePath) {
+    
+    CustomMap<std::string, std::string> metadata;
     return metadata;
 }
+
+
+
 
 template <typename... T>
     requires (sizeof...(T) > 0)
@@ -217,3 +355,4 @@ template CustomMap<std::string, std::string> FileMetaDataAnalyzer<PNGHeader>::an
 template CustomMap<std::string, std::string> FileMetaDataAnalyzer<BMPHeader>::analyzeMetadata(const std::filesystem::path& filePath);
 template CustomMap<std::string, std::string> FileMetaDataAnalyzer<ZIPHeader>::analyzeMetadata(const std::filesystem::path& filePath);
 template CustomMap<std::string, std::string> FileMetaDataAnalyzer<WAVHeader>::analyzeMetadata(const std::filesystem::path& filePath);
+

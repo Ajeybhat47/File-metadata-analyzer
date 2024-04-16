@@ -83,6 +83,7 @@ inline constexpr uint8_t PDFSignature[] = {'%', 'P', 'D', 'F'};
 inline constexpr uint8_t ZIPSignature[] = {0x50, 0x4B, 0x03, 0x04};
 inline constexpr char WAVSignature[] = {'R', 'I', 'F', 'F'};
 
+
 template <typename T>
 concept FileHeader = std::is_same_v<T, poppler::document> ||
                      std::is_same_v<T, std::ifstream> ||
@@ -91,6 +92,7 @@ concept FileHeader = std::is_same_v<T, poppler::document> ||
                      std::is_same_v<T, BMPHeader> ||
                      std::is_same_v<T, ZIPHeader> ||
                      std::is_same_v<T, WAVHeader>;
+
 
 template <typename... T>
     requires (sizeof...(T) > 0)
@@ -106,9 +108,12 @@ public:
         return analyzeMetadataHelper<T...>(filePath);
     }
 
+
+
 private:
     template <typename U>
     friend CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem::path& filePath);
 };
+
 
 #endif
