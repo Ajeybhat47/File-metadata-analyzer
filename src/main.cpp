@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
     CustomMap<std::string, std::string> metadata;
 
     // Determine file type based on file signature
-    FileType fileType = determineFileType<poppler::document, std::ifstream, JPEGHeader, PNGHeader, BMPHeader, ZIPHeader, WAVHeader>(filePath);
+    FileType fileType = determineFileType<poppler::document, std::ifstream, JPEGHeader, PNGHeader, BMPHeader, ZIPHeader, WAVHeader,GIFHeader>(filePath);
 
     // Analyze metadata based on file type
     switch (fileType) {
@@ -66,6 +66,11 @@ int main(int argc, char* argv[]) {
         case FileType::WAV:
             metadata = FileMetaDataAnalyzer<WAVHeader>::analyzeMetadata(filePath);
             std::cout << "WAV Metadata:" << std::endl;
+            break;
+
+        case FileType::GIF:
+            metadata = FileMetaDataAnalyzer<BasicMetadata,GIFHeader,LogicalScreenDescriptor>::analyzeMetadata(filePath);
+            std::cout << "GIF Metadata:" << std::endl;
             break;
         default:
             std::cerr << "Unsupported file format." << std::endl;
