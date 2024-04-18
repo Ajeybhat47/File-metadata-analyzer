@@ -13,39 +13,53 @@
 #include <ctime>
 
 
-
-template<typename T>
-CustomMap<std::string, std::string> extractBasicMetadata(const std::filesystem::path& filePath) {
-    CustomMap<std::string, std::string> basicMetadata;
+BasicMetadata extractBasicMetadata(const std::filesystem::path& filePath) {
+    BasicMetadata basicMetadata;
 
     // File name
     std::string fileName = filePath.filename().string();
-    basicMetadata["FileName"] = fileName;
+    basicMetadata.fileName = fileName;
 
     // File size
     struct stat fileStat;
     if (stat(filePath.c_str(), &fileStat) == 0) {
-        std::string fileSize = std::to_string(fileStat.st_size) + " bytes";
-        basicMetadata["FileSize"] = fileSize;
+        basicMetadata.fileSize = std::to_string(fileStat.st_size) + " bytes";
     }
 
     // File type/format
     std::string fileType = filePath.extension().string();
-    basicMetadata["FileType"] = fileType;
+    basicMetadata.fileType = fileType;
 
     // Creation time
     std::string creationTime = std::ctime(&fileStat.st_ctime);
-    basicMetadata["CreationTime"] = creationTime;
+    basicMetadata.creationTime = creationTime;
 
     // Last modified time
     std::string lastModified = std::ctime(&fileStat.st_mtime);
-    basicMetadata["LastModified"] = lastModified;
+    basicMetadata.lastModified = lastModified;
 
     // Last access time
     std::string lastAccess = std::ctime(&fileStat.st_atime);
-    basicMetadata["LastAccess"] = lastAccess;
+    basicMetadata.lastAccess = lastAccess;
 
     return basicMetadata;
+}
+
+bool readGifLogicalScreenDescriptor(const std::filesystem::path& filePath, LogicalScreenDescriptor& lsd) {
+    std::ifstream file(filePath, std::ios::binary);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    // Read GIF header
+    GIFHeader header;
+    file.read(reinterpret_cast<char*>(&header), sizeof(GIFHeader));
+
+    // Read Logical Screen Descriptor
+    file.read(reinterpret_cast<char*>(&lsd), sizeof(LogicalScreenDescriptor));
+    file.close();
+
+    return true;
 }
 
 /**
@@ -59,11 +73,26 @@ CustomMap<std::string, std::string> extractBasicMetadata(const std::filesystem::
  */
 template <typename T>
 CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem::path& filePath) {
-    CustomMap<std::string, std::string> metadata = extractBasicMetadata<T>(filePath);
+    CustomMap<std::string, std::string> metadata ;
 
 
+    if constexpr (std::is_same_v<T, BasicMetadata>)
+    {
+        BasicMetadata basicMetadata = extractBasicMetadata(filePath);
 
-    if constexpr (std::is_same_v<T, poppler::document>) {
+        // return custom map of basic metadata;
+        // store bsic metadata in custom map
+        metadata["FileName"] = basicMetadata.fileName;
+        metadata["FileSize"] = basicMetadata.fileSize;
+        metadata["FileType"] = basicMetadata.fileType;
+        metadata["CreationTime"] = basicMetadata.creationTime;
+        metadata["LastModified"] = basicMetadata.lastModified;
+        metadata["LastAccess"] = basicMetadata.lastAccess;
+        
+        return metadata;
+
+    }
+    else if constexpr (std::is_same_v<T, poppler::document>) {
         // PDF metadata extraction logic
         poppler::document* doc = poppler::document::load_from_file(filePath.string());
         if (!doc || doc->is_locked()) {
@@ -228,8 +257,35 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["BitsPerSample"] = std::to_string(header.bitsPerSample);
         metadata["DataTag"] = std::string(header.dataTag, 4);
         metadata["DataSize"] = std::to_string(header.dataSize);
-    }
+    }else if constexpr (std::is_same_v<T, GIFHeader>) {
+        // GIF metadata extraction logic
+        std::ifstream file(filePath, std::ios::binary);
+        if (!file.is_open()) {
+            return metadata;
+        }
 
+        GIFHeader header;
+        file.read(reinterpret_cast<char*>(&header), sizeof(GIFHeader));
+        file.close();
+
+        metadata["FileType"] = "GIF";
+        metadata["Signature"] = std::string(header.signature, 3);
+        metadata["Version"] = std::string(header.version, 3);
+        // Include additional metadata extraction for GIF files if needed
+    } else if constexpr (std::is_same_v<T, LogicalScreenDescriptor>) {
+        // GIF metadata extraction logic
+        LogicalScreenDescriptor lsd;
+        if (!readGifLogicalScreenDescriptor(filePath, lsd)) {
+            return metadata;
+        }
+
+        metadata["FileType"] = "GIF";
+        metadata["Width"] = std::to_string(lsd.width);
+        metadata["Height"] = std::to_string(lsd.height);
+        metadata["PackedFields"] = std::to_string(lsd.packedFields);
+        metadata["BackgroundColorIndex"] = std::to_string(lsd.backgroundColorIndex);
+        metadata["PixelAspectRatio"] = std::to_string(lsd.pixelAspectRatio);
+    }
 
     return metadata;
 }
@@ -244,7 +300,7 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
  * @return The determined file type.
  */
 template <typename... T>
-    requires (sizeof...(T) > 0)
+requires (sizeof...(T) > 0)
 FileType determineFileType(const std::filesystem::path& filePath) {
     std::ifstream file(filePath, std::ios::binary);
     if (!file.is_open()) {
@@ -264,6 +320,7 @@ FileType determineFileType(const std::filesystem::path& filePath) {
                 (signature[0] == '%' && signature[1] == 'P' && signature[2] == 'D' && signature[3] == 'F') ? FileType::PDF :
                 (std::memcmp(signature, ZIPSignature, sizeof(ZIPSignature)) == 0) ? FileType::ZIP :
                 (std::memcmp(signature, WAVSignature, sizeof(WAVSignature)) == 0) ? FileType::WAV :
+                (std::memcmp(signature, GIFSignature, sizeof(GIFSignature)) == 0) ? FileType::GIF : // Add GIF detection
                 FileType::TXT
             );
         }()
@@ -271,7 +328,11 @@ FileType determineFileType(const std::filesystem::path& filePath) {
 }
 
 // Explicit template instantiations for the supported file header types
-template FileType determineFileType<poppler::document, std::ifstream, JPEGHeader, PNGHeader, BMPHeader, ZIPHeader, WAVHeader>(const std::filesystem::path& filePath);
+template FileType determineFileType<poppler::document, std::ifstream, JPEGHeader, PNGHeader, BMPHeader, ZIPHeader, WAVHeader,GIFHeader>(const std::filesystem::path& filePath);
+
+
+// Explicit template instantiations for the supported file header types
+// template FileType determineFileType<poppler::document, std::ifstream, JPEGHeader, PNGHeader, BMPHeader, ZIPHeader, WAVHeader>(const std::filesystem::path& filePath);
 
 // Explicit template instantiations for the FileMetaDataAnalyzer class
 template CustomMap<std::string, std::string> FileMetaDataAnalyzer<poppler::document>::analyzeMetadata(const std::filesystem::path& filePath);
@@ -281,3 +342,6 @@ template CustomMap<std::string, std::string> FileMetaDataAnalyzer<PNGHeader>::an
 template CustomMap<std::string, std::string> FileMetaDataAnalyzer<BMPHeader>::analyzeMetadata(const std::filesystem::path& filePath);
 template CustomMap<std::string, std::string> FileMetaDataAnalyzer<ZIPHeader>::analyzeMetadata(const std::filesystem::path& filePath);
 template CustomMap<std::string, std::string> FileMetaDataAnalyzer<WAVHeader>::analyzeMetadata(const std::filesystem::path& filePath);
+template CustomMap<std::string, std::string> FileMetaDataAnalyzer<GIFHeader>::analyzeMetadata(const std::filesystem::path& filePath);
+template CustomMap<std::string, std::string> FileMetaDataAnalyzer<LogicalScreenDescriptor>::analyzeMetadata(const std::filesystem::path& filePath);
+template CustomMap<std::string, std::string> FileMetaDataAnalyzer<BasicMetadata>::analyzeMetadata(const std::filesystem::path& filePath);

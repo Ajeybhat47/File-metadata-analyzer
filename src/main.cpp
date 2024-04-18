@@ -20,60 +20,82 @@ void printMetadata(const CustomMap<KeyType, ValueType>& metadata) {
     std::cout << std::endl;
 }
 
+void mergeMap(CustomMap<std::string, std::string>& dest, const CustomMap<std::string, std::string>& src) {
+        for (const auto& [key, value] : src) {
+            dest[key] = value;
+        }
+    }
+
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " <file_path>" << std::endl;
         return 1;
     }
+    for (int i = 1; i < argc; ++i) {
+        std::filesystem::path filePath = argv[i];
+        CustomMap<std::string, std::string> metadata;
 
-    std::filesystem::path filePath = argv[1];
-    CustomMap<std::string, std::string> metadata;
+        // Determine file type based on file signature
+        FileType fileType = determineFileType<poppler::document, std::ifstream, JPEGHeader, PNGHeader, BMPHeader, ZIPHeader, WAVHeader,GIFHeader>(filePath);
 
-    // Determine file type based on file signature
-    FileType fileType = determineFileType<poppler::document, std::ifstream, JPEGHeader, PNGHeader, BMPHeader, ZIPHeader, WAVHeader>(filePath);
+        std::cout <<"For "<<argv[i]<< " Select metadata extraction option:" << std::endl;
+        std::cout << "1. Basic Metadata" << std::endl;
+        std::cout << "2. Specialized Metadata" << std::endl;
+        std::cout << "3. Both" << std::endl;
 
-    // Analyze metadata based on file type
-    switch (fileType) {
-        case FileType::PDF:
-            try {
-                metadata = FileMetaDataAnalyzer<poppler::document>::analyzeMetadata(filePath);
-                std::cout << "PDF Metadata:" << std::endl;
-            } catch (const std::exception& e) {
-                std::cerr << "Error analyzing PDF metadata: " << e.what() << std::endl;
-                return 1;
+        int choice;
+        std::cin >> choice;
+
+        if(choice == 1 || choice == 3){
+            metadata = FileMetaDataAnalyzer<BasicMetadata>::analyzeMetadata(filePath);
+        }
+
+        if(choice == 2 || choice == 3){
+            // Analyze metadata based on file type
+            switch (fileType) {
+                case FileType::PDF:
+                        mergeMap(metadata, FileMetaDataAnalyzer<poppler::document>::analyzeMetadata(filePath));
+                        std::cout << "PDF Metadata:" << std::endl;
+                    metadata = FileMetaDataAnalyzer<poppler::document>::analyzeMetadata(filePath);
+                    std::cout << "PDF Metadata:" << std::endl;
+                    break;
+                case FileType::TXT:
+                    mergeMap(metadata,FileMetaDataAnalyzer<std::ifstream>::analyzeMetadata(filePath));
+                    std::cout << "TXT Metadata:" << std::endl;
+                    break;
+                case FileType::JPEG:
+                    mergeMap(metadata, FileMetaDataAnalyzer<JPEGHeader>::analyzeMetadata(filePath));
+                    std::cout << "JPEG Metadata:" << std::endl;
+                    break;
+                case FileType::PNG:
+                    mergeMap(metadata, FileMetaDataAnalyzer<PNGHeader>::analyzeMetadata(filePath));
+                    std::cout << "PNG Metadata:" << std::endl;
+                    break;
+                case FileType::BMP:
+                    mergeMap(metadata, FileMetaDataAnalyzer<BMPHeader>::analyzeMetadata(filePath));
+                    std::cout << "BMP Metadata:" << std::endl;
+                    break;
+                case FileType::ZIP:
+                    mergeMap(metadata, FileMetaDataAnalyzer<ZIPHeader>::analyzeMetadata(filePath));
+                    std::cout << "ZIP Metadata:" << std::endl;
+                    break;
+                case FileType::WAV:
+                    mergeMap(metadata, FileMetaDataAnalyzer<WAVHeader>::analyzeMetadata(filePath));
+                    std::cout << "WAV Metadata:" << std::endl;
+                    break;
+
+                case FileType::GIF:
+                    mergeMap(metadata, FileMetaDataAnalyzer<GIFHeader,LogicalScreenDescriptor>::analyzeMetadata(filePath));
+                    std::cout << "GIF Metadata:" << std::endl;
+                    break;
+                default:
+                    std::cerr << "Unsupported file format." << std::endl;
+                    return 1;
             }
-            break;
-        case FileType::TXT:
-            metadata = FileMetaDataAnalyzer<std::ifstream>::analyzeMetadata(filePath);
-            std::cout << "TXT Metadata:" << std::endl;
-            break;
-        case FileType::JPEG:
-            metadata = FileMetaDataAnalyzer<JPEGHeader>::analyzeMetadata(filePath);
-            std::cout << "JPEG Metadata:" << std::endl;
-            break;
-        case FileType::PNG:
-            metadata = FileMetaDataAnalyzer<PNGHeader>::analyzeMetadata(filePath);
-            std::cout << "PNG Metadata:" << std::endl;
-            break;
-        case FileType::BMP:
-            metadata = FileMetaDataAnalyzer<BMPHeader>::analyzeMetadata(filePath);
-            std::cout << "BMP Metadata:" << std::endl;
-            break;
-        case FileType::ZIP:
-            metadata = FileMetaDataAnalyzer<ZIPHeader>::analyzeMetadata(filePath);
-            std::cout << "ZIP Metadata:" << std::endl;
-            break;
-        case FileType::WAV:
-            metadata = FileMetaDataAnalyzer<WAVHeader>::analyzeMetadata(filePath);
-            std::cout << "WAV Metadata:" << std::endl;
-            break;
-        default:
-            std::cerr << "Unsupported file format." << std::endl;
-            return 1;
+        }
+
+        // Print the extracted metadata using a lambda template
+        printMetadata(metadata);
     }
-
-    // Print the extracted metadata using a lambda template
-    printMetadata(metadata);
-
     return 0;
 }

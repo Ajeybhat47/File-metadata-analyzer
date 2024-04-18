@@ -16,11 +16,21 @@ enum class FileType {
     JPEG,
     PNG,
     BMP,
+    GIF, // Add GIF file type
     ZIP,
     WAV,
     UNKNOWN
 };
 
+
+struct BasicMetadata {
+    std::string fileName;
+    std::string fileSize;
+    std::string fileType;
+    std::string creationTime;
+    std::string lastModified;
+    std::string lastAccess;
+};
 
 //Structure representing the header of a JPEG file.
 struct JPEGHeader {
@@ -97,6 +107,19 @@ struct WAVHeader {
     uint32_t dataSize;
 };
 
+struct GIFHeader {
+    char signature[3];
+    char version[3];
+};
+
+struct LogicalScreenDescriptor {
+    unsigned short width;
+    unsigned short height;
+    unsigned char packedFields;
+    unsigned char backgroundColorIndex;
+    unsigned char pixelAspectRatio;
+};
+
 //File signature constants for different file types.
 inline constexpr uint8_t JPEGSignature[] = {0xFF, 0xD8, 0xFF};
 inline constexpr uint8_t PNGSignature[] = {0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'};
@@ -104,6 +127,8 @@ inline constexpr uint8_t BMPSignature[] = {'B', 'M'};
 inline constexpr uint8_t PDFSignature[] = {'%', 'P', 'D', 'F'};
 inline constexpr uint8_t ZIPSignature[] = {0x50, 0x4B, 0x03, 0x04};
 inline constexpr char WAVSignature[] = {'R', 'I', 'F', 'F'};
+inline constexpr uint8_t GIFSignature[] = {0x47, 0x49, 0x46}; // "GIF" in ASCII
+
 
 
 /**
@@ -118,8 +143,10 @@ concept FileHeader = std::is_same_v<T, poppler::document> ||
                      std::is_same_v<T, PNGHeader> ||
                      std::is_same_v<T, BMPHeader> ||
                      std::is_same_v<T, ZIPHeader> ||
-                     std::is_same_v<T, WAVHeader>;
-
+                     std::is_same_v<T, WAVHeader> ||
+                     std::is_same_v<T, GIFHeader> ||
+                     std::is_same_v<T, LogicalScreenDescriptor> ||
+                     std::is_same_v<T, BasicMetadata>;
 
 /**
  * @brief Determines the file type of the given file path.
@@ -168,12 +195,22 @@ public:
      *
      * @param filePath The path to the file.
      * @return A `CustomMap` containing the extracted metadata.
-     */
+     */  
     static CustomMap<std::string, std::string> analyzeMetadata(const std::filesystem::path& filePath) {
-        return analyzeMetadataHelper<T...>(filePath);
+        CustomMap<std::string, std::string> metadata;
+        ((void)mergeMap(metadata, analyzeMetadataHelper<T>(filePath)), ...);
+        return metadata;
     }
 
 private:
+    CustomMap<std::string, std::string> metadata;
+
+    static void mergeMap(CustomMap<std::string, std::string>& dest, const CustomMap<std::string, std::string>& src) {
+        for (const auto& [key, value] : src) {
+            dest[key] = value;
+        }
+    }
+
     template <typename U>
     friend CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem::path& filePath);
 };
