@@ -16,7 +16,7 @@ enum class FileType {
     JPEG,
     PNG,
     BMP,
-    GIF, // Add GIF file type
+    GIF, 
     ZIP,
     WAV,
     UNKNOWN
@@ -52,7 +52,6 @@ struct PNGHeader {
     uint32_t height;
 };
 
-//Structure representing the header of a BMP file.
 // Structure representing the header of a BMP file.
 struct BMPHeader {
     char     signature[2];
@@ -198,6 +197,7 @@ public:
      */  
     static CustomMap<std::string, std::string> analyzeMetadata(const std::filesystem::path& filePath) {
         CustomMap<std::string, std::string> metadata;
+
         ((void)mergeMap(metadata, analyzeMetadataHelper<T>(filePath)), ...);
         return metadata;
     }

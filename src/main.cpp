@@ -32,6 +32,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     for (int i = 1; i < argc; ++i) {
+
+
         std::filesystem::path filePath = argv[i];
         CustomMap<std::string, std::string> metadata;
 
@@ -49,49 +51,55 @@ int main(int argc, char* argv[]) {
         if(choice == 1 || choice == 3){
             metadata = FileMetaDataAnalyzer<BasicMetadata>::analyzeMetadata(filePath);
         }
+        try{
 
-        if(choice == 2 || choice == 3){
-            // Analyze metadata based on file type
-            switch (fileType) {
-                case FileType::PDF:
-                        mergeMap(metadata, FileMetaDataAnalyzer<poppler::document>::analyzeMetadata(filePath));
+            
+            if(choice == 2 || choice == 3){
+                // Analyze metadata based on file type
+                switch (fileType) {
+                    case FileType::PDF:
+                            mergeMap(metadata, FileMetaDataAnalyzer<poppler::document>::analyzeMetadata(filePath));
+                            std::cout << "PDF Metadata:" << std::endl;
+                        metadata = FileMetaDataAnalyzer<poppler::document>::analyzeMetadata(filePath);
                         std::cout << "PDF Metadata:" << std::endl;
-                    metadata = FileMetaDataAnalyzer<poppler::document>::analyzeMetadata(filePath);
-                    std::cout << "PDF Metadata:" << std::endl;
-                    break;
-                case FileType::TXT:
-                    mergeMap(metadata,FileMetaDataAnalyzer<std::ifstream>::analyzeMetadata(filePath));
-                    std::cout << "TXT Metadata:" << std::endl;
-                    break;
-                case FileType::JPEG:
-                    mergeMap(metadata, FileMetaDataAnalyzer<JPEGHeader>::analyzeMetadata(filePath));
-                    std::cout << "JPEG Metadata:" << std::endl;
-                    break;
-                case FileType::PNG:
-                    mergeMap(metadata, FileMetaDataAnalyzer<PNGHeader>::analyzeMetadata(filePath));
-                    std::cout << "PNG Metadata:" << std::endl;
-                    break;
-                case FileType::BMP:
-                    mergeMap(metadata, FileMetaDataAnalyzer<BMPHeader>::analyzeMetadata(filePath));
-                    std::cout << "BMP Metadata:" << std::endl;
-                    break;
-                case FileType::ZIP:
-                    mergeMap(metadata, FileMetaDataAnalyzer<ZIPHeader>::analyzeMetadata(filePath));
-                    std::cout << "ZIP Metadata:" << std::endl;
-                    break;
-                case FileType::WAV:
-                    mergeMap(metadata, FileMetaDataAnalyzer<WAVHeader>::analyzeMetadata(filePath));
-                    std::cout << "WAV Metadata:" << std::endl;
-                    break;
+                        break;
+                    case FileType::TXT:
+                        mergeMap(metadata,FileMetaDataAnalyzer<std::ifstream>::analyzeMetadata(filePath));
+                        std::cout << "TXT Metadata:" << std::endl;
+                        break;
+                    case FileType::JPEG:
+                        mergeMap(metadata, FileMetaDataAnalyzer<JPEGHeader>::analyzeMetadata(filePath));
+                        std::cout << "JPEG Metadata:" << std::endl;
+                        break;
+                    case FileType::PNG:
+                        mergeMap(metadata, FileMetaDataAnalyzer<PNGHeader>::analyzeMetadata(filePath));
+                        std::cout << "PNG Metadata:" << std::endl;
+                        break;
+                    case FileType::BMP:
+                        mergeMap(metadata, FileMetaDataAnalyzer<BMPHeader>::analyzeMetadata(filePath));
+                        std::cout << "BMP Metadata:" << std::endl;
+                        break;
+                    case FileType::ZIP:
+                        mergeMap(metadata, FileMetaDataAnalyzer<ZIPHeader>::analyzeMetadata(filePath));
+                        std::cout << "ZIP Metadata:" << std::endl;
+                        break;
+                    case FileType::WAV:
+                        mergeMap(metadata, FileMetaDataAnalyzer<WAVHeader>::analyzeMetadata(filePath));
+                        std::cout << "WAV Metadata:" << std::endl;
+                        break;
 
-                case FileType::GIF:
-                    mergeMap(metadata, FileMetaDataAnalyzer<GIFHeader,LogicalScreenDescriptor>::analyzeMetadata(filePath));
-                    std::cout << "GIF Metadata:" << std::endl;
-                    break;
-                default:
-                    std::cerr << "Unsupported file format." << std::endl;
-                    return 1;
+                    case FileType::GIF:
+                        mergeMap(metadata, FileMetaDataAnalyzer<GIFHeader,LogicalScreenDescriptor>::analyzeMetadata(filePath));
+                        std::cout << "GIF Metadata:" << std::endl;
+                        break;
+                    default:
+                        std::cerr << "Unsupported file format." << std::endl;
+                        return 1;
+                }
             }
+        }catch (const std::exception& e) {
+            std::cerr << e.what() << std::endl;
+            continue;
         }
 
         // Print the extracted metadata using a lambda template

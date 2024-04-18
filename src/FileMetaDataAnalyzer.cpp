@@ -11,7 +11,7 @@
 #include <sys/stat.h>
 #include <string>
 #include <ctime>
-
+#include <cassert>
 
 BasicMetadata extractBasicMetadata(const std::filesystem::path& filePath) {
     BasicMetadata basicMetadata;
@@ -58,6 +58,16 @@ bool readGifLogicalScreenDescriptor(const std::filesystem::path& filePath, Logic
     return true;
 }
 
+void custom_assert(bool condition, const char* message) {
+    if (!condition) {
+        std::cerr << "Assertion failed: " << message << std::endl;
+        // Additional error handling code here, like logging, reporting, etc.
+        // You can also throw an exception or terminate the program if necessary
+        // For demonstration, let's terminate the program
+        throw std::runtime_error("Assertion failed");
+    }
+}
+
 /**
  * @brief Helper function to analyze the metadata of a file based on its type.
  *
@@ -70,7 +80,7 @@ bool readGifLogicalScreenDescriptor(const std::filesystem::path& filePath, Logic
 template <typename T>
 CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem::path& filePath) {
     CustomMap<std::string, std::string> metadata ;
-
+    std::string extension = filePath.extension().string();
 
     if constexpr (std::is_same_v<T, BasicMetadata>)
     {
@@ -89,6 +99,8 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
 
     }
     else if constexpr (std::is_same_v<T, poppler::document>) {
+
+        custom_assert(extension == ".pdf" , "Unexpected file extension for PDF metadata");
         // PDF metadata extraction logic
         poppler::document* doc = poppler::document::load_from_file(filePath.string());
         if (!doc || doc->is_locked()) {
@@ -107,6 +119,9 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["FileType"] = "PDF";
         delete doc;
     } else if constexpr (std::is_same_v<T, std::ifstream>) {
+
+        custom_assert(extension == ".txt" , "Unexpected file extension for TXT metadata");
+
         // TXT metadata extraction logic
         std::ifstream file(filePath);
         if (!file.is_open()) {
@@ -135,6 +150,9 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["FileType"] = "TXT";
         file.close();
     } else if constexpr (std::is_same_v<T, JPEGHeader>) {
+
+        custom_assert(extension == ".jpg" , "Unexpected file extension for JPEG metadata");
+
         // JPEG metadata extraction logic
         std::ifstream file(filePath, std::ios::binary);
         if (!file.is_open()) {
@@ -156,6 +174,8 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["ThumbnailWidth"] = std::to_string(static_cast<int>(header.thumbWidth));
         metadata["ThumbnailHeight"] = std::to_string(static_cast<int>(header.thumbHeight));
     } else if constexpr (std::is_same_v<T, PNGHeader>) {
+        custom_assert(extension == ".png" , "Unexpected file extension for PNG metadata");
+
         // PNG metadata extraction logic
         std::ifstream file(filePath, std::ios::binary);
         if (!file.is_open()) {
@@ -171,6 +191,9 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["Width"] = std::to_string(header.width);
         metadata["Height"] = std::to_string(header.height);
     } else if constexpr (std::is_same_v<T, BMPHeader>) {
+
+        custom_assert(extension == ".bmp" , "Unexpected file extension for BMP metadata");
+
     // BMP metadata extraction logic
         std::ifstream file(filePath, std::ios::binary);
         if (!file.is_open()) {
@@ -187,6 +210,9 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["Width"] = std::to_string(header.width);
         metadata["Height"] = std::to_string(header.height);
     } else if constexpr (std::is_same_v<T, ZIPHeader>) {
+
+        custom_assert(extension == ".zip" , "Unexpected file extension for ZIP metadata");
+
         // ZIP metadata extraction logic
         int error;
         zip_t* zip = zip_open(filePath.string().c_str(), 0, &error);
@@ -229,6 +255,9 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
 
         zip_close(zip);
     } else if constexpr (std::is_same_v<T, WAVHeader>) {
+
+        custom_assert(extension == ".wav" , "Unexpected file extension for WAV metadata");
+
         //WAV metadata extraction logic
         std::ifstream file(filePath, std::ios::binary);
         if (!file.is_open()) {
@@ -254,6 +283,8 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["DataTag"] = std::string(header.dataTag, 4);
         metadata["DataSize"] = std::to_string(header.dataSize);
     }else if constexpr (std::is_same_v<T, GIFHeader>) {
+        custom_assert(extension == ".gif" , "Unexpected file extension for GIF metadata");
+
         // GIF metadata extraction logic
         std::ifstream file(filePath, std::ios::binary);
         if (!file.is_open()) {
@@ -269,6 +300,8 @@ CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem:
         metadata["Version"] = std::string(header.version, 3);
         // Include additional metadata extraction for GIF files if needed
     } else if constexpr (std::is_same_v<T, LogicalScreenDescriptor>) {
+
+        custom_assert(extension == ".gif" , "Unexpected file extension for GIF metadata");
         // GIF metadata extraction logic
         LogicalScreenDescriptor lsd;
         if (!readGifLogicalScreenDescriptor(filePath, lsd)) {
@@ -322,6 +355,7 @@ FileType determineFileType(const std::filesystem::path& filePath) {
         }()
     );
 }
+
 
 // Explicit template instantiations for the supported file header types
 template FileType determineFileType<poppler::document, std::ifstream, JPEGHeader, PNGHeader, BMPHeader, ZIPHeader, WAVHeader,GIFHeader>(const std::filesystem::path& filePath);
