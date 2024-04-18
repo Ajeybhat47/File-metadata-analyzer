@@ -213,6 +213,7 @@ private:
 
     template <typename U>
     friend CustomMap<std::string, std::string> analyzeMetadataHelper(const std::filesystem::path& filePath);
+    
 };
 
 #endif

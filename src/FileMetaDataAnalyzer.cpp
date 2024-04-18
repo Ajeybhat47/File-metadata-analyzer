@@ -51,10 +51,6 @@ bool readGifLogicalScreenDescriptor(const std::filesystem::path& filePath, Logic
         return false;
     }
 
-    // Read GIF header
-    GIFHeader header;
-    file.read(reinterpret_cast<char*>(&header), sizeof(GIFHeader));
-
     // Read Logical Screen Descriptor
     file.read(reinterpret_cast<char*>(&lsd), sizeof(LogicalScreenDescriptor));
     file.close();
