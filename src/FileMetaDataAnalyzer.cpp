@@ -12,14 +12,6 @@
 #include <string>
 #include <ctime>
 
-// struct BasicMetadata {
-//     std::string fileName;
-//     std::string fileSize;
-//     std::string fileType;
-//     std::string creationTime;
-//     std::string lastModified;
-//     std::string lastAccess;
-// };
 
 BasicMetadata extractBasicMetadata(const std::filesystem::path& filePath) {
     BasicMetadata basicMetadata;
@@ -27,7 +19,6 @@ BasicMetadata extractBasicMetadata(const std::filesystem::path& filePath) {
     // File name
     std::string fileName = filePath.filename().string();
     basicMetadata.fileName = fileName;
-    std::cout<<fileName<<"hello"<<std::endl;
 
     // File size
     struct stat fileStat;

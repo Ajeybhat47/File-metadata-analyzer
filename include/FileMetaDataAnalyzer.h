@@ -195,7 +195,7 @@ public:
      *
      * @param filePath The path to the file.
      * @return A `CustomMap` containing the extracted metadata.
-     */
+     */  
     static CustomMap<std::string, std::string> analyzeMetadata(const std::filesystem::path& filePath) {
         CustomMap<std::string, std::string> metadata;
         ((void)mergeMap(metadata, analyzeMetadataHelper<T>(filePath)), ...);
